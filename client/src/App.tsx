@@ -246,11 +246,13 @@ function App() {
 
       <main className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-12">
         <header className="flex flex-col gap-4">
-          <span className="badge">MOV to MP4 Converter</span>
-          <h1 className="headline">Make your MOV files Android-ready in one pass.</h1>
+          <div className="wordmark">
+            <span>Convert</span>
+            <span className="wordmark-accent">Desk</span>
+          </div>
+          <h1 className="headline">Turn Your MOV Files into Universal MP4s</h1>
           <p className="subhead">
-            Upload a .mov file, let the server convert it with ffmpeg, and download a crisp MP4.
-            No fuss, no clutter.
+            Make your videos compatible with Android, Windows, and the web without losing quality. Just upload and download.
           </p>
         </header>
 
@@ -349,15 +351,15 @@ function App() {
         <section className="grid gap-4 md:grid-cols-3">
           <div className="step-card">
             <p className="step-title">1. Upload</p>
-            <p className="step-body">Drop a .mov file or browse your machine.</p>
+            <p className="step-body">Browse or Drop a .mov file from your device.</p>
           </div>
           <div className="step-card">
             <p className="step-title">2. Convert</p>
-            <p className="step-body">Server runs ffmpeg for Android compatible MP4.</p>
+            <p className="step-body">Your video is transformed into a high-quality, universally compatible MP4.</p>
           </div>
           <div className="step-card">
             <p className="step-title">3. Download</p>
-            <p className="step-body">Grab the MP4 and share immediately.</p>
+            <p className="step-body">Download your high-quality MP4, ready to use anywhere.</p>
           </div>
         </section>
       </main>
