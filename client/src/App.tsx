@@ -14,9 +14,11 @@ type ProgressPayload = {
 }
 
 const MAX_FILE_MB = 500
+const ALLOWED_VIDEO_EXTENSIONS = ['.mov', '.mp4', '.m4v', '.3gp', '.webm', '.mkv', '.avi']
+const helloHighlights = ['For your smile', 'Made with care', 'Keep this close']
 
 const statusCopy: Record<Status, string> = {
-  idle: 'Drop a .mov file to start.',
+  idle: 'Drop a video file to start.',
   uploading: 'Uploading to the server.',
   queued: 'Queued for conversion.',
   processing: 'Converting with ffmpeg.',
@@ -50,6 +52,10 @@ function App() {
   const [queuePosition, setQueuePosition] = useState<number | null>(null)
   const [serverMessage, setServerMessage] = useState<string | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
+  const [showHelloModal, setShowHelloModal] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.getAll('code').includes('badcute')
+  })
 
   const fileSize = useMemo(() => (selectedFile ? formatBytes(selectedFile.size) : '-'), [selectedFile])
 
@@ -78,8 +84,10 @@ function App() {
   const handleFile = (file: File | null) => {
     if (!file) return
     const lower = file.name.toLowerCase()
-    if (!lower.endsWith('.mov')) {
-      setError('Please choose a .mov file.')
+    const hasSupportedExtension = ALLOWED_VIDEO_EXTENSIONS.some((ext) => lower.endsWith(ext))
+    const isVideoMime = file.type.startsWith('video/')
+    if (!hasSupportedExtension && !isVideoMime) {
+      setError('Please choose a video file.')
       setStatus('error')
       return
     }
@@ -240,6 +248,41 @@ function App() {
 
   return (
     <div className="app">
+      {showHelloModal ? (
+        <div className="modal-backdrop" role="presentation" onClick={() => setShowHelloModal(false)}>
+          <div className="hello-modal" role="dialog" aria-modal="true" aria-labelledby="hello-modal-title" onClick={(event) => event.stopPropagation()}>
+            <button className="hello-close" type="button" aria-label="Close hello modal" onClick={() => setShowHelloModal(false)}>
+              ×
+            </button>
+            <div className="hello-mark" aria-hidden="true">
+              <span>❤</span>
+            </div>
+            <div className="hello-copy">
+              <p className="hello-kicker">A little note, just for you.</p>
+              <h2 id="hello-modal-title">Hello, Badmash Cutie</h2>
+              <p className="hello-lead">This little corner was waiting just for you.</p>
+              <div className="hello-note">
+                <p>Thank you for coming into my life.</p>
+                <p>You make even ordinary moments feel worth keeping.</p>
+              </div>
+            </div>
+            <div className="hello-highlights" aria-label="Hello modal highlights">
+              {helloHighlights.map((item) => (
+                <span key={item} className="hello-chip">
+                  {item}
+                </span>
+              ))}
+            </div>
+            <div className="hello-footer">
+              <p>Now go make more memories and I&apos;ll help keep them easy to replay.</p>
+              <button className="btn btn-primary hello-action" type="button" onClick={() => setShowHelloModal(false)}>
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="orb orb-1" aria-hidden="true" />
       <div className="orb orb-2" aria-hidden="true" />
       <div className="orb orb-3" aria-hidden="true" />
@@ -271,7 +314,7 @@ function App() {
               <div className="drop-core" />
             </div>
             <div className="drop-copy">
-              <p className="drop-title">{selectedFile ? 'File locked in.' : 'Drag and drop your .mov file.'}</p>
+              <p className="drop-title">{selectedFile ? 'File locked in.' : 'Drag and drop your video file.'}</p>
               <p className="drop-sub">
                 {selectedFile ? `${selectedFile.name} • ${fileSize}` : 'Or click to browse your computer.'}
               </p>
@@ -283,7 +326,7 @@ function App() {
               ref={inputRef}
               className="hidden"
               type="file"
-              accept=".mov,video/quicktime"
+              accept="video/*,.mov,.mp4,.m4v,.3gp,.webm,.mkv,.avi"
               onChange={(event) => handleFile(event.target.files?.[0] ?? null)}
             />
           </div>
@@ -351,7 +394,7 @@ function App() {
         <section className="grid gap-4 md:grid-cols-3">
           <div className="step-card">
             <p className="step-title">1. Upload</p>
-            <p className="step-body">Browse or Drop a .mov file from your device.</p>
+            <p className="step-body">Browse or drop a video file from your device.</p>
           </div>
           <div className="step-card">
             <p className="step-title">2. Convert</p>

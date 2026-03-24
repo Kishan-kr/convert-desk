@@ -1,4 +1,5 @@
 ﻿import json
+import os
 import queue
 import shutil
 import subprocess
@@ -12,21 +13,50 @@ from typing import Any, Dict, Optional
 from flask import Flask, Response, after_this_request, jsonify, request, send_file
 from flask_cors import CORS
 from werkzeug.exceptions import RequestEntityTooLarge
+from dotenv import load_dotenv
 
 from convert import convert_mov_to_mp4
 
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 MAX_QUEUE_DEPTH = 5
 JOB_TTL_SECONDS = 30 * 60
+ALLOWED_VIDEO_EXTENSIONS = {".mov", ".mp4", ".m4v", ".3gp", ".webm", ".mkv", ".avi"}
+
+_server_dir = Path(__file__).resolve().parent
+_repo_dir = _server_dir.parent
+load_dotenv(_server_dir / ".env")
+load_dotenv(_repo_dir / ".env")
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+_debug = _env_bool("FLASK_DEBUG", False)
+cors_origins_raw = os.getenv("CORS_ORIGINS", "")
+cors_origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()]
+if cors_origins:
+    CORS(app, resources={r"/api/*": {"origins": cors_origins}})
+elif _debug:
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 jobs: Dict[str, Dict[str, Any]] = {}
 queue_order: list[str] = []
 job_queue: queue.Queue[str] = queue.Queue()
 jobs_lock = threading.Lock()
+
+
+def _is_supported_video_upload(filename: str, mimetype: str) -> bool:
+    ext = Path(filename).suffix.lower()
+    if ext in ALLOWED_VIDEO_EXTENSIONS:
+        return True
+    return mimetype.lower().startswith("video/")
 
 
 def _cleanup_job(job_id: str) -> None:
@@ -149,15 +179,17 @@ def convert():
     if uploaded.filename == "":
         return jsonify({"error": "Empty filename."}), 400
 
-    if not uploaded.filename.lower().endswith(".mov"):
-        return jsonify({"error": "Only .mov files are supported."}), 400
+    if not _is_supported_video_upload(uploaded.filename, uploaded.mimetype or ""):
+        return jsonify({"error": "Only video files are supported."}), 400
 
     with jobs_lock:
         if len(queue_order) >= MAX_QUEUE_DEPTH:
             return jsonify({"error": "Queue is full. Try again soon."}), 429
 
     tmp_dir = tempfile.mkdtemp(prefix="mov_to_mp4_")
-    input_path = Path(tmp_dir) / "input.mov"
+    upload_ext = Path(uploaded.filename).suffix.lower()
+    normalized_ext = upload_ext if upload_ext in ALLOWED_VIDEO_EXTENSIONS else ".mov"
+    input_path = Path(tmp_dir) / f"input{normalized_ext}"
     output_path = Path(tmp_dir) / "output.mp4"
 
     try:
@@ -254,4 +286,6 @@ def download(job_id: str):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host=host, port=port, debug=_debug)
